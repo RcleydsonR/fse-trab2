@@ -7,12 +7,6 @@
 
 #include <main.h>
 
-int LISTENING_COMMANDS = 0;
-
-int rx_length = 0;
-
-char getCharFromUartOutput();
-
 int configureUart(){
     int uart_filestream = -1;
     char uart_path[] = "/dev/serial0";
@@ -34,64 +28,6 @@ int configureUart(){
     return uart_filestream;
 }
 
-void commandListener() {
-    int uartCommand = 0;
-
-    while (LISTENING_COMMANDS) {
-            sendUartRequest(0xC3);
-            sleep(1);
-            uartCommand = getIntFromUartOutput();
-            printf("%d\n", uartCommand);
-            delay(500);
-        }
-}
-
-void handleCLI() {
-    while (1)
-    {
-        int command = getCommandOption();
-        if (command == 1){
-            LISTENING_COMMANDS = 1;
-            commandListener();
-        }
-        else if (command == 2)
-            continue;
-        else
-            printf("Opcao invalida!\n");
-    }
-}
-
-char getSubCodeFromOption(int option){
-    switch (option){
-        case 1:
-            return 0xC1;
-            break;
-        case 2: 
-            return 0xC2;
-            break;
-        case 3: 
-            return 0xC3;
-            break;
-        case 4:
-            return 0xD1;
-            break;
-        case 5: 
-            return 0xD2;
-            break;
-        case 6: 
-            return 0xD3;
-            break;
-        case 7:
-            return 0xD4;
-            break;
-        case 8: 
-            return 0xD5;
-            break;
-        default:
-            return 0xD6;
-    }
-}
-
 void sendUartRequest(char subCode) {
     unsigned char header[7] = {0x01, 0x23, subCode, 0x09, 0x00, 0x08, 0x05};
     unsigned char tx_buffer[20];
@@ -109,10 +45,10 @@ void sendUartRequest(char subCode) {
             printf("UART TX error\n");
         }
     }
+    sleep(1);
 }
 
-int getIntFromUartOutput()
-{
+int getIntFromUartOutput() {
     unsigned char buffer[20];
     int response = -1;
 
@@ -131,12 +67,59 @@ int getIntFromUartOutput()
     return response; 
 }
 
-int getCommandOption(){
-    int commandOption;
-    printf("Digite o numero da opcao que deseja:\n");
-    printf("====================================\n");
-    printf("1. Controlar forno pelo dashboard web\n");
-    printf("2. Controlar temperatura pelo terminal\n");
-    scanf("%d", &commandOption);
-    return commandOption;
+void sendIntToUart(int subCode, int value) {
+    unsigned char header[7] = {0x01, 0x23, subCode, 0x09, 0x00, 0x08, 0x05};
+    unsigned char message[13];
+
+    memcpy(message, &header, 7);
+    memcpy(&message[7], &value, 4);
+
+    short crc = calcula_CRC(message, 11);
+
+    memcpy(&message[11], &crc, 2);
+
+    int check = write(uart0_filestream, &message[0], 13);
+
+    if(check < 0){
+        printf("Ocorreu um erro na comunicação com o UART\n");
+    }
+    sleep(1);
+}
+
+void sendFloatToUart(int subCode, float value) {
+    unsigned char header[7] = {0x01, 0x23, subCode, 0x09, 0x00, 0x08, 0x05};
+    unsigned char message[13];
+
+    memcpy(message, &header, 7);
+    memcpy(&message[7], &value, 4);
+
+    short crc = calcula_CRC(message, 11);
+
+    memcpy(&message[11], &crc, 2);
+
+    int check = write(uart0_filestream, &message[0], 13);
+
+    if(check < 0){
+        printf("Ocorreu um erro na comunicação com o UART\n");
+    }
+    sleep(1);
+}
+
+void sendByteToUart(int subCode, char value) {
+    unsigned char header[7] = {0x01, 0x23, subCode, 0x09, 0x00, 0x08, 0x05};
+    unsigned char message[10];
+
+    memcpy(message, &header, 7);
+    memcpy(&message[7], &value, 1);
+
+    short crc = calcula_CRC(message, 8);
+
+    memcpy(&message[8], &crc, 2);
+
+    int check = write(uart0_filestream, &message[0], 10);
+
+    if(check < 0){
+        printf("Ocorreu um erro na comunicação com o UART\n");
+    }
+    sleep(1);
 }

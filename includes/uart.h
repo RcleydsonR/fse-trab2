@@ -2,6 +2,10 @@
 #define UART_H_
 
 int configureUart();
-void handleCLI();
+void sendUartRequest(char subCode);
+int getIntFromUartOutput();
+void sendIntToUart(int subCode, int value);
+void sendFloatToUart(int subCode, float value);
+void sendByteToUart(int subCode, char value);
 
 #endif /* UART_H_ */
