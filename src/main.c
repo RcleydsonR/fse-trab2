@@ -6,7 +6,7 @@
 #include <string.h>     
 #include <pthread.h>
 
-#include "uart.h"
+#include "controller.h"
 
 int uart0_filestream;
 
