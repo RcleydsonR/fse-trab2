@@ -7,8 +7,12 @@
 #include <pthread.h>
 
 #include "controller.h"
+#include "temperature.h"
+#include "bme280.h"
+#include "bme280_defs.h"
 
 int uart0_filestream;
+struct bme280_dev bme_conn;
 
 void exitProccess();
 
@@ -17,6 +21,7 @@ int main(int argc, const char * argv[]) {
     signal(SIGINT, exitProccess);
 
     // Initialize
+    bme_conn = initBmeConn();
     uart0_filestream = configureUart();
 
     pthread_t tid;

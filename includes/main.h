@@ -2,5 +2,6 @@
 #define MAIN_H_
 
 extern int uart0_filestream;
+extern struct bme280_dev bme_conn;
 
 #endif /* MAIN_H_ */

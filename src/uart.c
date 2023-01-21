@@ -67,6 +67,25 @@ int getIntFromUartOutput() {
     return response; 
 }
 
+float getFloatFromUart() {
+    unsigned char buffer[20];
+    float response = -1.0;
+
+    int data_size = read(uart0_filestream, buffer, 20);
+    if(!data_size){
+        printf("Nenhum dado foi recebido\n");
+    }
+    else if(data_size < 0){
+        printf("Erro ao ler dados\n");
+    }
+    else {
+        buffer[data_size] = '\0';
+        memcpy(&response, &buffer[3], sizeof(float));
+        return response;
+    }
+    return response; 
+}
+
 void sendIntToUart(int subCode, int value) {
     unsigned char header[7] = {0x01, 0x23, subCode, 0x09, 0x00, 0x08, 0x05};
     unsigned char message[13];
