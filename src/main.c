@@ -9,7 +9,8 @@
 #include "controller.h"
 #include "temperature.h"
 #include "bme280.h"
-#include "bme280_defs.h"
+#include "pid.h"
+#include "crc.h"
 
 int uart0_filestream;
 struct bme280_dev bme_conn;
