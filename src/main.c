@@ -11,6 +11,7 @@
 #include "bme280.h"
 #include "pid.h"
 #include "crc.h"
+#include "gpio.h"
 
 int uart0_filestream;
 struct bme280_dev bme_conn;
@@ -22,6 +23,7 @@ int main(int argc, const char * argv[]) {
     signal(SIGINT, exitProccess);
 
     // Initialize
+    initGpio();
     bme_conn = initBmeConn();
     uart0_filestream = configureUart();
 
@@ -33,6 +35,9 @@ int main(int argc, const char * argv[]) {
 }
 
 void exitProccess() {
+    printf("Desligando programa...");
+    setFan(0);
+    setResistor(0);
     close(uart0_filestream);
     exit(0);
 }

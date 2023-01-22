@@ -10,6 +10,7 @@
 #include <uart.h>
 #include <pid.h>
 #include <temperature.h>
+#include <gpio.h>
 
 int LISTENING_COMMANDS = 0;
 int SYSTEM_ON = 0;
@@ -28,6 +29,7 @@ void handleCLI() {
             printf("Opcao invalida!\n");
 
         controlByCurve = command % 1;
+        sendByteToUart(0xD4, controlByCurve);
         LISTENING_COMMANDS = 1;
 
         commandListener();
@@ -65,17 +67,19 @@ void handleCommand(int command) {
         SYSTEM_ON = 0;
         OVEN_WORK = 0;
     }
-    else if (command == 0xA3){
+    else if (command == 0xA3 && SYSTEM_ON && !OVEN_WORK){
         sendByteToUart(0xD5, 1);
         OVEN_WORK = 1;
         controlOven();
     }
-    else if (command == 0xA4 && SYSTEM_ON){
+    else if (command == 0xA4 && OVEN_WORK){
         sendByteToUart(0xD5, 0);
         SYSTEM_ON = 0;
         OVEN_WORK = 0;
     }
     else if (command == 0xA5 && SYSTEM_ON){
+        controlByCurve = controlByCurve == 0 ? 1 : 0;
+        sendByteToUart(0xD4, controlByCurve);
         printf("Alternar entre o modo de temperatura de referencia e curva de temperatura\n");
     }
 }
@@ -123,10 +127,11 @@ void controlOvenByDashboard() {
 
         pid_atualiza_referencia(refTemp);
         int pid = pid_controle(internTemp);
+        controlGpioBasedOnPid(pid);
 
         printf("Temperatura referencia: %f\n", refTemp);
         printf("Temperatura interna: %f\n", internTemp);
-        printf("Error pid: %d\n", pid);
+        printf("pid: %d\n", pid);
         
         sendUartRequest(0xC3);
         int uartCommand = getIntFromUartOutput();
