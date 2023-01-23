@@ -13,46 +13,68 @@
 #include <temperature.h>
 #include <gpio.h>
 
-pthread_t countDownThread;
+pthread_t countDownThread, commandListenerThread;
 
 void controlOvenByDashboard();
 void controlOvenByCurve();
-void *updateCurveState(void *vargp);
+void updateCurveState();
+void commandListener();
 
 void handleCLI() {
-    while (1)
-    {
+    SYSTEM_ON = 1;
+    LISTENING_COMMANDS = 1;
+
+    pthread_create(&commandListenerThread, NULL, (void *)commandListener, NULL);
+
+
+    while (SYSTEM_ON) {
         int command = getCommandOption();
-        while (command < 1 || command > 2)
-            printf("Opcao invalida!\n");
+        while (command < 1 || command > 3)
+            printf("Opcao invalida! Insira uma opcao entre 1 e 3.\n");
+
+        if (command == 3)
+            definePIDConst();
 
         controlByCurve = command == 2;
         sendByteToUart(0xD4, controlByCurve);
-        LISTENING_COMMANDS = 1;
-
-        commandListener();
     }
+}
+
+int getCommandOption(){
+    int commandOption;
+    printf("\n\n\n\n\n");
+    printf("Digite o numero referente a opcao que deseja:\n");
+    printf("==================================================\n");
+    printf("1. Controlar temperatura pelo dashboard%s\n", controlByCurve ? "." : " - Selecionado.");
+    printf("2. Controlar temperatura pela curva de referencia%s\n", controlByCurve ? " - Selecionado." : ".");
+    printf("3. Controlar as constantes do PID.\n");
+    scanf(" %d", &commandOption);
+    return commandOption;
+}
+
+void definePIDConst() {
+    double Kp, Ki, Kd;
+
+    printf("\nDigite o valor de Kp:\n");
+    scanf("%lf", &Kp);
+    printf("Digite o valor de Ki:\n");
+    scanf("%lf", &Ki);
+    printf("Digite o valor de Kd:\n");
+    scanf("%lf", &Kd);
+
+    pid_configura_constantes(Kp, Ki, Kd);
+    return;
 }
 
 void commandListener() {
     int uartCommand = 0;
 
     while (LISTENING_COMMANDS) {
-            sendUartRequest(0xC3);
-            uartCommand = getIntFromUartOutput();
-            handleCommand(uartCommand);
-            sleep(1);
-        }
-}
-
-int getCommandOption(){
-    int commandOption;
-    printf("Digite o numero referente a opcao que deseja:\n");
-    printf("====================================\n");
-    printf("1. Controlar temperatura pelo dashboard\n");
-    printf("2. Controlar temperatura pela curva de referência\n");
-    scanf("%d", &commandOption);
-    return commandOption;
+        sendUartRequest(0xC3);
+        uartCommand = getIntFromUartOutput();
+        handleCommand(uartCommand);
+        sleep(1);
+    }
 }
 
 void handleCommand(int command) {
@@ -80,11 +102,13 @@ void handleCommand(int command) {
         if(controlByCurve == 0)
             COUNTDOWN_WORKING = 0;
         sendByteToUart(0xD4, controlByCurve);
+        sleep(1);
         controlOven();
     }
 }
 
 void controlOven() {
+    OVEN_WORK = 0;
     if (controlByCurve)
         controlOvenByCurve();
     else
@@ -92,14 +116,13 @@ void controlOven() {
 }
 
 void controlOvenByCurve() {
-    printf("Controlando forno pela curva\n");
+    OVEN_WORK = 1;
     COUNTDOWN_WORKING = 1;
     curveState = 0;
-    pthread_create(&countDownThread, NULL, updateCurveState, NULL);
+    pthread_create(&countDownThread, NULL, (void *)updateCurveState, NULL);
 
     while (OVEN_WORK) {
         if(curveState == 10){
-            printf("Aquecimento vide curva de referência finalizado.");
             OVEN_WORK = 0;
             break;
         }
@@ -114,10 +137,6 @@ void controlOvenByCurve() {
         controlGpioBasedOnPid(pid);
         sendIntToUart(0xD1, pid);
 
-        printf("Temperatura interna: %f\n", internTemp);
-        printf("Temperatura referencia: %f\n", refTemp);
-        printf("pid: %d\n", pid);
-        
         sendUartRequest(0xC3);
         int uartCommand = getIntFromUartOutput();
         handleCommand(uartCommand);
@@ -125,7 +144,7 @@ void controlOvenByCurve() {
 }
 
 void controlOvenByDashboard() {
-    printf("Controlando forno pela dashboard\n");
+    OVEN_WORK = 1;
     while (OVEN_WORK) {
         sendUartRequest(0xC1);
         internTemp = getFloatFromUart();
@@ -136,10 +155,6 @@ void controlOvenByDashboard() {
         pid = pid_controle(internTemp);
         controlGpioBasedOnPid(pid);
         sendIntToUart(0xD1, pid);
-
-        printf("Temperatura referencia: %f\n", refTemp);
-        printf("Temperatura interna: %f\n", internTemp);
-        printf("pid: %d\n", pid);
         
         sendUartRequest(0xC3);
         int uartCommand = getIntFromUartOutput();
@@ -147,16 +162,13 @@ void controlOvenByDashboard() {
     }
 }
 
-void *updateCurveState(void *vargp)
+void updateCurveState()
 {
-    printf("Entrei na thread\n");
-
     while(COUNTDOWN_WORKING && curveState < 10){
         sleep(deltaCurveTime[curveState]);
         curveState++;
-        printf("Novo estado da curva: %d\n", curveState);
     }
     
     COUNTDOWN_WORKING = 0;
-    return NULL;
+    return;
 }

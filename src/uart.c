@@ -4,7 +4,9 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+
 #include <global_state.h>
+#include <crc.h>
 
 int configureUart(){
     int uart_filestream = -1;
@@ -52,13 +54,7 @@ int getIntFromUartOutput() {
     int response = -1;
 
     int data_size = read(uart0_filestream, buffer, 20);
-    if(!data_size){
-        printf("Nenhum dado recebido\n");
-    }
-    else if(data_size < 0){
-        printf("Erro na leitura dos dados\n");
-    }
-    else {
+    if(data_size > 0) {
         buffer[data_size] = '\0';
         memcpy(&response, &buffer[3], sizeof(int));
         return response;
@@ -71,13 +67,7 @@ float getFloatFromUart() {
     float response = -1.0;
 
     int data_size = read(uart0_filestream, buffer, 20);
-    if(!data_size){
-        printf("Nenhum dado foi recebido\n");
-    }
-    else if(data_size < 0){
-        printf("Erro ao ler dados\n");
-    }
-    else {
+    if(data_size > 0) {
         buffer[data_size] = '\0';
         memcpy(&response, &buffer[3], sizeof(float));
         return response;
@@ -98,9 +88,6 @@ void sendIntToUart(int subCode, int value) {
 
     int check = write(uart0_filestream, &message[0], 13);
 
-    if(check < 0){
-        printf("Ocorreu um erro na comunicação com o UART\n");
-    }
     sleep(1);
 }
 
@@ -117,9 +104,6 @@ void sendFloatToUart(int subCode, float value) {
 
     int check = write(uart0_filestream, &message[0], 13);
 
-    if(check < 0){
-        printf("Ocorreu um erro na comunicação com o UART\n");
-    }
     sleep(1);
 }
 
@@ -136,8 +120,5 @@ void sendByteToUart(int subCode, char value) {
 
     int check = write(uart0_filestream, &message[0], 10);
 
-    if(check < 0){
-        printf("Ocorreu um erro na comunicação com o UART\n");
-    }
     sleep(1);
 }

@@ -27,6 +27,7 @@ int main(int argc, const char * argv[]) {
     pthread_t cliThread, logThread;
     pthread_create(&logThread, NULL, (void *)runLogger, (void *)NULL);
     pthread_create(&cliThread, NULL, (void *)handleCLI, (void *)NULL);
+    
     pthread_join(cliThread, NULL);
 
     return 0;
