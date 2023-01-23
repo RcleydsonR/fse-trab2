@@ -23,9 +23,9 @@ void commandListener();
 void handleCLI() {
     SYSTEM_ON = 1;
     LISTENING_COMMANDS = 1;
+    sendByteToUart(0xD4, controlByCurve);
 
     pthread_create(&commandListenerThread, NULL, (void *)commandListener, NULL);
-
 
     while (SYSTEM_ON) {
         int command = getCommandOption();
@@ -72,6 +72,7 @@ void commandListener() {
     while (LISTENING_COMMANDS) {
         sendUartRequest(0xC3);
         uartCommand = getIntFromUartOutput();
+        externTemp = getTempFromBme();
         handleCommand(uartCommand);
         sleep(1);
     }
@@ -80,22 +81,22 @@ void commandListener() {
 void handleCommand(int command) {
     if (command == 0xA1){
         sendByteToUart(0xD3, 1);
-        SYSTEM_ON = 1;
     }
     else if (command == 0xA2){
         sendByteToUart(0xD3, 0);
-        SYSTEM_ON = 0;
         OVEN_WORK = 0;
+        SYSTEM_ON = 0;
+        LISTENING_COMMANDS = 0;
+        COUNTDOWN_WORKING = 0;
     }
     else if (command == 0xA3 && SYSTEM_ON && !OVEN_WORK){
         sendByteToUart(0xD5, 1);
-        OVEN_WORK = 1;
         controlOven();
     }
     else if (command == 0xA4 && OVEN_WORK){
         sendByteToUart(0xD5, 0);
-        SYSTEM_ON = 0;
         OVEN_WORK = 0;
+        COUNTDOWN_WORKING = 0;
     }
     else if (command == 0xA5 && SYSTEM_ON){
         controlByCurve = controlByCurve == 0 ? 1 : 0;

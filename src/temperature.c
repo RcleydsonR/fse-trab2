@@ -164,9 +164,7 @@ float getSensorTemperature(struct bme280_dev *dev)
     rslt = bme280_set_sensor_settings(settings_sel, dev);
     if (rslt != BME280_OK)
     {
-        fprintf(stderr, "Failed to set sensor settings (code %+d).", rslt);
-
-        return rslt;
+        return -1.0;
     }
 
     /*Calculate the minimum delay required between consecutive measurement based upon the sensor enabled
@@ -177,8 +175,7 @@ float getSensorTemperature(struct bme280_dev *dev)
     rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, dev);
     if (rslt != BME280_OK)
     {
-        fprintf(stderr, "Failed to set sensor mode (code %+d).", rslt);
-        exit(1);
+        return -1.0;
     }
 
     /* Wait for the measurement to complete and print data */
@@ -186,8 +183,7 @@ float getSensorTemperature(struct bme280_dev *dev)
     rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, dev);
     if (rslt != BME280_OK)
     {
-        fprintf(stderr, "Failed to get sensor data (code %+d).", rslt);
-        exit(1);
+        return -1.0;
     }
 
     return comp_data.temperature;
@@ -196,7 +192,7 @@ float getSensorTemperature(struct bme280_dev *dev)
 /*!
  * @brief This function starts execution of the program.
  */
-struct bme280_dev initBmeConn()
+float getTempFromBme()
 {
     struct bme280_dev dev;
 
@@ -207,14 +203,12 @@ struct bme280_dev initBmeConn()
     char i2cPath[] = "/dev/i2c-1";
     if ((id.fd = open(i2cPath, O_RDWR)) < 0)
     {
-        fprintf(stderr, "Falha ao abrir o barramento i2c %s\n", i2cPath);
-        exit(1);
+        return -1.0;
     }
     id.dev_addr = BME280_I2C_ADDR_PRIM;
     if (ioctl(id.fd, I2C_SLAVE, id.dev_addr) < 0)
     {
-        fprintf(stderr, "Falha ao obter acesso ao barramento e/ou falar com o escravo.\n");
-        exit(1);
+        return -1.0;
     }
 
     /* Make sure to select BME280_I2C_ADDR_PRIM or BME280_I2C_ADDR_SEC as needed */
@@ -232,9 +226,8 @@ struct bme280_dev initBmeConn()
     rslt = bme280_init(&dev);
     if (rslt != BME280_OK)
     {
-        fprintf(stderr, "Falha na inicialização do dispositivo (código %+d).\n", rslt);
-        exit(1);
+        return -1.0;
     }
 
-    return dev;
+    return getSensorTemperature(&dev);
 }
