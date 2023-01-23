@@ -47,7 +47,7 @@ void commandListener() {
 
 int getCommandOption(){
     int commandOption;
-    printf("Digite o numero da opcao que deseja para controle da temperatura de referência:\n");
+    printf("Digite o numero referente a opcao que deseja:\n");
     printf("====================================\n");
     printf("1. Controlar temperatura pelo dashboard\n");
     printf("2. Controlar temperatura pela curva de referência\n");
@@ -77,8 +77,10 @@ void handleCommand(int command) {
     }
     else if (command == 0xA5 && SYSTEM_ON){
         controlByCurve = controlByCurve == 0 ? 1 : 0;
+        if(controlByCurve == 0)
+            COUNTDOWN_WORKING = 0;
         sendByteToUart(0xD4, controlByCurve);
-        printf("Alternar entre o modo de temperatura de referencia e curva de temperatura\n");
+        controlOven();
     }
 }
 
@@ -90,6 +92,7 @@ void controlOven() {
 }
 
 void controlOvenByCurve() {
+    printf("Controlando forno pela curva\n");
     COUNTDOWN_WORKING = 1;
     curveState = 0;
     pthread_create(&countDownThread, NULL, updateCurveState, NULL);
@@ -122,6 +125,7 @@ void controlOvenByCurve() {
 }
 
 void controlOvenByDashboard() {
+    printf("Controlando forno pela dashboard\n");
     while (OVEN_WORK) {
         sendUartRequest(0xC1);
         internTemp = getFloatFromUart();
