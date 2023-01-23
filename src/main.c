@@ -30,7 +30,7 @@ int main(int argc, const char * argv[]) {
     
     pthread_join(cliThread, NULL);
 
-    return 0;
+    exitProccess();
 }
 
 void exitProccess() {

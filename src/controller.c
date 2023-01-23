@@ -14,6 +14,7 @@
 #include <gpio.h>
 
 pthread_t countDownThread, commandListenerThread;
+int HANDLE_CLI = 1;
 
 void controlOvenByDashboard();
 void controlOvenByCurve();
@@ -21,22 +22,30 @@ void updateCurveState();
 void commandListener();
 
 void handleCLI() {
-    SYSTEM_ON = 1;
     LISTENING_COMMANDS = 1;
+
+    sendByteToUart(0xD3, 0);
     sendByteToUart(0xD4, controlByCurve);
+    sendByteToUart(0xD5, 0);
 
     pthread_create(&commandListenerThread, NULL, (void *)commandListener, NULL);
 
-    while (SYSTEM_ON) {
+    while (HANDLE_CLI) {
         int command = getCommandOption();
         while (command < 1 || command > 3)
             printf("Opcao invalida! Insira uma opcao entre 1 e 3.\n");
 
+        if (HANDLE_CLI == 0)
+            break;
+        
         if (command == 3)
             definePIDConst();
-
-        controlByCurve = command == 2;
-        sendByteToUart(0xD4, controlByCurve);
+        else{
+            controlByCurve = command == 2;
+            sendByteToUart(0xD4, controlByCurve);
+            controlOven();
+        }
+        
     }
 }
 
@@ -80,14 +89,17 @@ void commandListener() {
 
 void handleCommand(int command) {
     if (command == 0xA1){
+        SYSTEM_ON = 1;
         sendByteToUart(0xD3, 1);
     }
     else if (command == 0xA2){
         sendByteToUart(0xD3, 0);
+        sendByteToUart(0xD5, 0);
         OVEN_WORK = 0;
         SYSTEM_ON = 0;
         LISTENING_COMMANDS = 0;
         COUNTDOWN_WORKING = 0;
+        HANDLE_CLI = 0;
     }
     else if (command == 0xA3 && SYSTEM_ON && !OVEN_WORK){
         sendByteToUart(0xD5, 1);
@@ -103,13 +115,13 @@ void handleCommand(int command) {
         if(controlByCurve == 0)
             COUNTDOWN_WORKING = 0;
         sendByteToUart(0xD4, controlByCurve);
-        sleep(1);
         controlOven();
     }
 }
 
 void controlOven() {
     OVEN_WORK = 0;
+    sleep(2);
     if (controlByCurve)
         controlOvenByCurve();
     else
@@ -142,6 +154,9 @@ void controlOvenByCurve() {
         int uartCommand = getIntFromUartOutput();
         handleCommand(uartCommand);
     }
+
+    disableFanAndResistor();
+    sendIntToUart(0xD1, 0);
 }
 
 void controlOvenByDashboard() {
@@ -157,10 +172,14 @@ void controlOvenByDashboard() {
         controlGpioBasedOnPid(pid);
         sendIntToUart(0xD1, pid);
         
+        if(OVEN_WORK == 0)
+            break;
         sendUartRequest(0xC3);
         int uartCommand = getIntFromUartOutput();
         handleCommand(uartCommand);
     }
+    disableFanAndResistor();
+    sendIntToUart(0xD1, 0);
 }
 
 void updateCurveState()
