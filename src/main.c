@@ -12,6 +12,7 @@
 #include "pid.h"
 #include "crc.h"
 #include "gpio.h"
+#include "log.h"
 
 void exitProccess();
 
@@ -23,9 +24,10 @@ int main(int argc, const char * argv[]) {
     initGpio();
     uart0_filestream = configureUart();
 
-    pthread_t tid;
-    pthread_create(&tid, NULL, (void *)handleCLI, (void *)NULL);
-    pthread_join(tid, NULL);
+    pthread_t cliThread, logThread;
+    pthread_create(&logThread, NULL, (void *)runLogger, (void *)NULL);
+    pthread_create(&cliThread, NULL, (void *)handleCLI, (void *)NULL);
+    pthread_join(cliThread, NULL);
 
     return 0;
 }
@@ -34,6 +36,7 @@ void exitProccess() {
     printf("Desligando programa...\n");
     disableFanAndResistor();
     disableFanAndResistor();
+    closeLogger();
     close(uart0_filestream);
-    exit(0);
+    exit(1);
 }
