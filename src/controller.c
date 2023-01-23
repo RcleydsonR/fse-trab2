@@ -7,21 +7,13 @@
 #include <time.h>
 #include <pthread.h>
 
-#include <main.h>
+#include <global_state.h>
 #include <uart.h>
 #include <pid.h>
 #include <temperature.h>
 #include <gpio.h>
 
-int LISTENING_COMMANDS = 0;
-int COUNTDOWN_WORKING = 0;
-int SYSTEM_ON = 0;
-int OVEN_WORK = 0;
-
-int controlByCurve = 0;
-int deltaCurveTime[10] = {30, 60, 120, 20, 40, 60, 60, 60, 120, 10};
-float deltaCurveTemperature[10] = {25.0, 38.0, 46.0, 54.0, 57.0, 61.0, 63.0, 54.0, 33.0, 25.0};
-int curveState = 0;
+pthread_t countDownThread;
 
 void controlOvenByDashboard();
 void controlOvenByCurve();
@@ -100,7 +92,6 @@ void controlOven() {
 void controlOvenByCurve() {
     COUNTDOWN_WORKING = 1;
     curveState = 0;
-    pthread_t countDownThread;
     pthread_create(&countDownThread, NULL, updateCurveState, NULL);
 
     while (OVEN_WORK) {
@@ -110,13 +101,13 @@ void controlOvenByCurve() {
             break;
         }
 
-        float refTemp = deltaCurveTemperature[curveState];
+        refTemp = deltaCurveTemperature[curveState];
         sendUartRequest(0xC1);
-        float internTemp = getFloatFromUart();
+        internTemp = getFloatFromUart();
         sendFloatToUart(0xD2, refTemp);
 
         pid_atualiza_referencia(refTemp);
-        int pid = pid_controle(internTemp);
+        pid = pid_controle(internTemp);
         controlGpioBasedOnPid(pid);
         sendIntToUart(0xD1, pid);
 
@@ -133,12 +124,12 @@ void controlOvenByCurve() {
 void controlOvenByDashboard() {
     while (OVEN_WORK) {
         sendUartRequest(0xC1);
-        float internTemp = getFloatFromUart();
+        internTemp = getFloatFromUart();
         sendUartRequest(0xC2);
-        float refTemp = getFloatFromUart();
+        refTemp = getFloatFromUart();
 
         pid_atualiza_referencia(refTemp);
-        int pid = pid_controle(internTemp);
+        pid = pid_controle(internTemp);
         controlGpioBasedOnPid(pid);
         sendIntToUart(0xD1, pid);
 

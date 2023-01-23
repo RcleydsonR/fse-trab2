@@ -4,8 +4,7 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-
-#include <main.h>
+#include <global_state.h>
 
 int configureUart(){
     int uart_filestream = -1;
