@@ -27,7 +27,6 @@ void setResistor(int pidIntensity) {
 void disableFanAndResistor() {
     softPwmWrite(GPIO_FAN, MIN_INTENSITY);
     softPwmWrite(GPIO_RESISTOR, MIN_INTENSITY);
-
 }
 
 void controlGpioBasedOnPid(int pidIntensity) {

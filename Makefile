@@ -1,7 +1,7 @@
 CC = gcc
 LDFLAGS = -lwiringPi -lpthread
 BLDDIR = .
-INCDIR = $(BLDDIR)/includes
+INCDIR = $(BLDDIR)/inc
 SRCDIR = $(BLDDIR)/src
 OBJDIR = $(BLDDIR)/obj
 CFLAGS = -c -w -I$(INCDIR)

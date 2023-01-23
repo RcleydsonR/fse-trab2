@@ -4,6 +4,7 @@
 void initGpio();
 void setFan(int pidIntensity);
 void setResistor(int pidIntensity);
+void disableFanAndResistor();
 void controlGpioBasedOnPid(int pidIntensity);
 
 #endif /* GPIO_H_ */

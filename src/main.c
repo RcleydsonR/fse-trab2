@@ -8,13 +8,13 @@
 
 #include "controller.h"
 #include "temperature.h"
-#include "bme280.h"
+// #include "bme280.h"
 #include "pid.h"
 #include "crc.h"
 #include "gpio.h"
 
 int uart0_filestream;
-struct bme280_dev bme_conn;
+// struct bme280_dev bme_conn;
 
 void exitProccess();
 
@@ -24,7 +24,7 @@ int main(int argc, const char * argv[]) {
 
     // Initialize
     initGpio();
-    bme_conn = initBmeConn();
+    // bme_conn = initBmeConn();
     uart0_filestream = configureUart();
 
     pthread_t tid;
@@ -35,9 +35,9 @@ int main(int argc, const char * argv[]) {
 }
 
 void exitProccess() {
-    printf("Desligando programa...");
-    setFan(0);
-    setResistor(0);
+    printf("Desligando programa...\n");
+    disableFanAndResistor();
+    disableFanAndResistor();
     close(uart0_filestream);
     exit(0);
 }

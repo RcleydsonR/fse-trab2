@@ -5,6 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
 
 #include <main.h>
 #include <uart.h>
@@ -13,13 +14,18 @@
 #include <gpio.h>
 
 int LISTENING_COMMANDS = 0;
+int COUNTDOWN_WORKING = 0;
 int SYSTEM_ON = 0;
 int OVEN_WORK = 0;
 
 int controlByCurve = 0;
+int deltaCurveTime[10] = {30, 60, 120, 20, 40, 60, 60, 60, 120, 10};
+float deltaCurveTemperature[10] = {25.0, 38.0, 46.0, 54.0, 57.0, 61.0, 63.0, 54.0, 33.0, 25.0};
+int curveState = 0;
 
 void controlOvenByDashboard();
 void controlOvenByCurve();
+void *updateCurveState(void *vargp);
 
 void handleCLI() {
     while (1)
@@ -28,7 +34,7 @@ void handleCLI() {
         while (command < 1 || command > 2)
             printf("Opcao invalida!\n");
 
-        controlByCurve = command % 1;
+        controlByCurve = command == 2;
         sendByteToUart(0xD4, controlByCurve);
         LISTENING_COMMANDS = 1;
 
@@ -43,7 +49,7 @@ void commandListener() {
             sendUartRequest(0xC3);
             uartCommand = getIntFromUartOutput();
             handleCommand(uartCommand);
-            delay(500);
+            sleep(1);
         }
 }
 
@@ -92,25 +98,31 @@ void controlOven() {
 }
 
 void controlOvenByCurve() {
-    int deltaCurveTime[10] = {0, 60, 120, 240, 260, 300, 360, 420, 480, 600};
-    float deltaCurveTemperature[10] = {25.0, 38.0, 46.0, 54.0, 57.0, 61.0, 63.0, 54.0, 33.0, 25.0};
-    int i = 0;
+    COUNTDOWN_WORKING = 1;
+    curveState = 0;
+    pthread_t countDownThread;
+    pthread_create(&countDownThread, NULL, updateCurveState, NULL);
 
     while (OVEN_WORK) {
-        printf("Temperatura referencia: %f\n", deltaCurveTemperature[i]);
+        if(curveState == 10){
+            printf("Aquecimento vide curva de referência finalizado.");
+            OVEN_WORK = 0;
+            break;
+        }
 
+        float refTemp = deltaCurveTemperature[curveState];
         sendUartRequest(0xC1);
         float internTemp = getFloatFromUart();
+        sendFloatToUart(0xD2, refTemp);
+
+        pid_atualiza_referencia(refTemp);
         int pid = pid_controle(internTemp);
+        controlGpioBasedOnPid(pid);
+        sendIntToUart(0xD1, pid);
 
-        printf("Error pid: %d\n", pid);
         printf("Temperatura interna: %f\n", internTemp);
-
-        // timeAlreadyTaken = ((double)(clock() - startTime))/CLOCKS_PER_SEC;
-        // printf("Tempo executando em segundos: %f \n", timeAlreadyTaken);
-
-        // float tempAmbiente = getSensorTemperature(bme_conn);
-        // printf("Temperatura ambiente: %f\n", tempAmbiente);
+        printf("Temperatura referencia: %f\n", refTemp);
+        printf("pid: %d\n", pid);
         
         sendUartRequest(0xC3);
         int uartCommand = getIntFromUartOutput();
@@ -128,6 +140,7 @@ void controlOvenByDashboard() {
         pid_atualiza_referencia(refTemp);
         int pid = pid_controle(internTemp);
         controlGpioBasedOnPid(pid);
+        sendIntToUart(0xD1, pid);
 
         printf("Temperatura referencia: %f\n", refTemp);
         printf("Temperatura interna: %f\n", internTemp);
@@ -139,20 +152,16 @@ void controlOvenByDashboard() {
     }
 }
 
-// void updateReferenceTemperatureWithValue(float refTemp) {
-//     printf("Temperatura referencia: %f\n", refTemp);
-//     if (refTemp > 0){
-//         sendFloatToUart(0xD2, refTemp);
-//         float _ = getFloatFromUart();
-//         pid_atualiza_referencia(refTemp);
-//     }
-// }
+void *updateCurveState(void *vargp)
+{
+    printf("Entrei na thread\n");
 
-void updateReferenceTemperature() {
-    sendUartRequest(0xC2);
-    float refTemp = getFloatFromUart();
-    if (refTemp > 0){
-        sendFloatToUart(0xD2, refTemp);
-        pid_atualiza_referencia(refTemp);
+    while(COUNTDOWN_WORKING && curveState < 10){
+        sleep(deltaCurveTime[curveState]);
+        curveState++;
+        printf("Novo estado da curva: %d\n", curveState);
     }
+    
+    COUNTDOWN_WORKING = 0;
+    return NULL;
 }
